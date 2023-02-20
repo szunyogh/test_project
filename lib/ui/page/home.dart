@@ -28,38 +28,38 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   void icosahedronsAdd(Offset position) {
-    List<Map<String, dynamic>> vlm = paths;
+    List<Map<String, dynamic>> newPathList = paths;
     for (var element in paths) {
       if (element['path'].contains(position)) {
-        vlm.remove(element);
+        newPathList.remove(element);
         final offsets = element['offsets'] as List<Offset>;
         final ab = (offsets.first + offsets[1]) / 2;
         final ac = (offsets.first + offsets[2]) / 2;
         final cb = (offsets[1] + offsets[2]) / 2;
         final path = Path()..addPolygon([ab, ac, cb], true);
-        vlm.add({
+        newPathList.add({
           'path': path,
           'offsets': [ab, ac, cb]
         });
         final path1 = Path()..addPolygon([offsets.first, ab, ac], true);
-        vlm.add({
+        newPathList.add({
           'path': path1,
           'offsets': [offsets.first, ab, ac]
         });
         final path2 = Path()..addPolygon([offsets[1], ab, cb], true);
-        vlm.add({
+        newPathList.add({
           'path': path2,
           'offsets': [offsets[1], ab, cb]
         });
         final path3 = Path()..addPolygon([offsets[2], ac, cb], true);
-        vlm.add({
+        newPathList.add({
           'path': path3,
           'offsets': [offsets[2], ac, cb]
         });
         break;
       }
     }
-    paths = vlm;
+    paths = newPathList;
     notifier = ValueNotifier(paths.map((e) => e['path'] as Path).toList());
 
     setState(() {});
