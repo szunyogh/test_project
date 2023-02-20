@@ -1,5 +1,4 @@
 import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,29 +9,93 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  ValueNotifier<List<Path>> notifier = ValueNotifier([]);
+  List<Map<String, dynamic>> paths = [];
+  Size pageSize = Size.zero;
+
+  void initIcosahedrons() {
+    final height = MediaQuery.of(context).size.height - 40;
+    final width = MediaQuery.of(context).size.width - 40;
+    final size = Size(width, height);
+    for (var i = 0; i < 5; i++) {
+      final icosahedronPath = icosahedron(size, i);
+      final decagonPath = decagon(size, i * 2);
+      paths.add(icosahedronPath);
+      paths.add(decagonPath);
+    }
+    notifier = ValueNotifier(paths.map((e) => e['path'] as Path).toList());
+    setState(() {});
+  }
+
+  void icosahedronsAdd(Offset position) {
+    List<Map<String, dynamic>> vlm = paths;
+    for (var element in paths) {
+      if (element['path'].contains(position)) {
+        vlm.remove(element);
+        final offsets = element['offsets'] as List<Offset>;
+        final ab = (offsets.first + offsets[1]) / 2;
+        final ac = (offsets.first + offsets[2]) / 2;
+        final cb = (offsets[1] + offsets[2]) / 2;
+        final path = Path()..addPolygon([ab, ac, cb], true);
+        vlm.add({
+          'path': path,
+          'offsets': [ab, ac, cb]
+        });
+        final path1 = Path()..addPolygon([offsets.first, ab, ac], true);
+        vlm.add({
+          'path': path1,
+          'offsets': [offsets.first, ab, ac]
+        });
+        final path2 = Path()..addPolygon([offsets[1], ab, cb], true);
+        vlm.add({
+          'path': path2,
+          'offsets': [offsets[1], ab, cb]
+        });
+        final path3 = Path()..addPolygon([offsets[2], ac, cb], true);
+        vlm.add({
+          'path': path3,
+          'offsets': [offsets[2], ac, cb]
+        });
+        break;
+      }
+    }
+    paths = vlm;
+    notifier = ValueNotifier(paths.map((e) => e['path'] as Path).toList());
+
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size.height - 40;
+    final size = MediaQuery.of(context).size;
+    double d = size.height > size.width ? size.width - 40 : size.height - 40;
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) {
+      if (pageSize != size) {
+        paths = [];
+        initIcosahedrons();
+        pageSize = size;
+      }
+    });
+
     return Scaffold(
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(size / 2),
+            borderRadius: BorderRadius.circular(d / 2),
             child: SizedBox(
-              height: size,
-              width: size,
-              child: CustomPaint(
-                painter: CicrularPainter(),
-                foregroundPainter: Icosahedron(),
-                child: InkWell(
-                  //focusColor: Colors.transparent,
-                  //hoverColor: Colors.transparent,
-                  //splashColor: Colors.transparent,
-                  //highlightColor: Colors.transparent,
-                  onTap: () {
-                    print("ghukhjm");
-                  },
+              height: d,
+              width: d,
+              child: InkWell(
+                hoverColor: Colors.transparent,
+                splashColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                onTapDown: (details) {
+                  icosahedronsAdd(details.localPosition);
+                },
+                child: CustomPaint(
+                  painter: Icosahedron(notifier),
+                  foregroundPainter: CicrularPainter(),
                 ),
               ),
             ),
@@ -41,38 +104,41 @@ class _HomePageState extends ConsumerState<HomePage> {
       ),
     );
   }
-}
 
-class Icosahedron extends CustomPainter {
-  Paint painter = Paint();
-
-  Path decagon(Size size, int index) {
+  Map<String, dynamic> decagon(Size size, int index) {
     var path = Path();
+
+    List<Offset> offsets = [];
 
     double sides = 10;
     double radius = size.height > size.width ? size.width / 2 : size.height / 2;
 
     var angle = (pi * 2) / sides;
 
-    Offset center = Offset(size.width / 2, size.height / 2);
+    Offset center = Offset(radius, radius);
 
     double dx = radius * cos(angle * index) + center.dx;
     double dy = radius * sin(angle * index) + center.dy;
     path.moveTo(dx, dy);
 
+    offsets.add(Offset(dx, dy));
+
     for (int i = index + 1; i <= index + 2; i++) {
       double x = radius * cos(angle * i) + center.dx;
       double y = radius * sin(angle * i) + center.dy;
+      offsets.add(Offset(x, y));
       path.lineTo(x, y);
     }
 
     path.close();
 
-    return path;
+    return {'path': path, 'offsets': offsets};
   }
 
-  Path icosahedron(Size size, int index) {
+  Map<String, dynamic> icosahedron(Size size, int index) {
     var path = Path();
+
+    List<Offset> offsets = [];
 
     double sides = 5;
     double radius = size.height > size.width ? size.width / 2 : size.height / 2;
@@ -80,52 +146,44 @@ class Icosahedron extends CustomPainter {
 
     var angle = (pi * 2) / sides;
 
-    Offset center = Offset(size.width / 2, size.height / 2);
+    Offset center = Offset(radius, radius);
 
     double dx = radius * cos(angle * index) + center.dx;
     double dy = radius * sin(angle * index) + center.dy;
     path.moveTo(dx, dy);
 
+    offsets.add(Offset(dx, dy));
+
     double startX = radius * cos(radians + angle * (index + 1)) + center.dx;
     double startY = radius * sin(radians + angle * (index + 1)) + center.dy;
     path.lineTo(startX, startY);
+    offsets.add(Offset(startX, startY));
     path.lineTo(center.dx, center.dy);
+    offsets.add(Offset(center.dx, center.dy));
     path.close();
 
-    return path;
+    return {'path': path, 'offsets': offsets};
   }
+}
+
+class Icosahedron extends CustomPainter {
+  ValueNotifier<List<Path>> notifier;
+  Icosahedron(this.notifier) : super(repaint: notifier);
 
   @override
   void paint(Canvas canvas, Size size) {
+    Paint painter = Paint();
     painter.color = Colors.green[800]!;
     painter.isAntiAlias = true;
     painter.style = PaintingStyle.stroke;
 
-    canvas.drawPath(decagon(size, 0), painter);
-    canvas.drawPath(decagon(size, 2), painter);
-    canvas.drawPath(decagon(size, 4), painter);
-    canvas.drawPath(decagon(size, 6), painter);
-    canvas.drawPath(decagon(size, 8), painter);
-    canvas.drawPath(icosahedron(size, 0), painter);
-    canvas.drawPath(icosahedron(size, 1), painter);
-    canvas.drawPath(icosahedron(size, 2), painter);
-    canvas.drawPath(icosahedron(size, 3), painter);
-    canvas.drawPath(icosahedron(size, 4), painter);
+    for (var path in notifier.value) {
+      canvas.drawPath(path, painter);
+    }
   }
 
   @override
-  bool shouldRepaint(Icosahedron oldDelegate) {
-    return true;
-  }
-
-  @override
-  bool shouldRebuildSemantics(Icosahedron oldDelegate) => true;
-
-  @override
-  bool hitTest(Offset position) {
-    painter.color = Colors.red;
-    return true;
-  }
+  bool shouldRepaint(covariant Icosahedron oldDelegate) => true;
 }
 
 class CicrularPainter extends CustomPainter {
